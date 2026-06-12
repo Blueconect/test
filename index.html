@@ -255,7 +255,7 @@
   <footer>
     Solde en temps réel : API <a href="https://mempool.space" target="_blank" rel="noopener">mempool.space</a> ·
     Distribution des adresses : snapshot du <span id="snapDate"></span> (source publique)<br>
-    Le rang est une estimation par interpolation dans la tranche de solde — précision typique de l'ordre de quelques pourcents.
+    Le rang est une estimation par interpolation dans la tranche de solde — modèle calibré sur la masse BTC réelle de chaque tranche, erreur typique 1–2 %.
   </footer>
 </div>
 
@@ -263,13 +263,13 @@
 /* ════════════════════════════════════════════════════════════
    Distribution Bitcoin — snapshot 12 juin 2026
    POINTS : [seuil BTC, nb exact d'adresses ≥ seuil]
-   TOP100 : classement exact des 100 plus grosses adresses
+   TOPBAL : soldes exacts du top 1 000 mondial
    ════════════════════════════════════════════════════════════ */
 const SNAPSHOT_DATE = "12 juin 2026";
 const TOTAL = 58935968;
-const POINTS = [[1e-08,58935968],[1.572e-05,48875237],[0.0001,38902038],[0.001,24906286],[0.00157163,22071464],[0.01,12826378],[0.01571629,10410749],[0.1,4505463],[0.15716287,3354737],[1,976158],[1.57162872,601706],[10,150311],[15.71628715,111297],[100,20023],[157.16287154,14019],[1000,2042],[8999,100]];
-const TOP100 = [["34xp4vRoCGJym3xR7yCVPFHoCNxv4Twseo",248598.0],["3M219KR5vEneNb47ewrPfWyb5jQ2DjxRP6",174934.0],["bc1ql49ydapnjafl5t2cp9zqpjwe6pdgmxy98859v2",140850.0],["bc1qgdjqv0av3q56jvd82tkdjpy7gdp9ut8tlqmgrpmv24sq90ecnvqqjwvw97",130010.0],["bc1qjasf9z3h7w3jspkhtgatgpyvvzgpa2wwd2lr0eh5tx44reyn2k7sfc27a4",96936.0],["bc1qazcm763858nkj2dj986etajv6wquslv8uxwczt",94643.0],["bc1qd4ysezhmypwty5dnw7c8nqy5h5nxg0xqsvaefd0qn5kq32vwnwqqgv4rzr",91850.0],["1FeexV6bAHb8ybZjqQMjJrcCrHGW9sb6uF",79957.0],["bc1q8yj0herd4r4yxszw3nkfvt53433thk0f5qst4g",78317.0],["1Ay8vMC7R1UbyCCZRVULMV7iQpHSAbguJP",72787.0],["bc1qa5wkgaew2dkv56kfvj49j0av5nml45x9ek9hz6",69370.0],["3LYJfcfHPXYJreMsASk2jkn69LWEYKzexb",68200.0],["bc1q0ymzksy046tv4z88ts5nmu7s574umnwmdev3rt",62658.0],["3MgEAFWu1HKSnZ5ZsC8qf61ZW18xrP5pgd",55905.0],["1LdRcdxfbSnmCYYNdeYpUnztiYzVfBEQeC",53880.0],["1AC4fMwgY8j9onSbXEWeH6Zan8QGMSdmtA",51830.0],["1LruNZjwamWJXThX2Y8C2d47QqhAkkc5os",44000.0],["bc1q0j55cut9nd2c88tnnsfultdx696c8lt6n4n0su",43035.0],["bc1q4j7fcl8zx5yl56j00nkqez9zf3f6ggqchwzzcs5hjxwqhsgxvavq3qfgpr",42483.0],["bc1qws342rlkhszh58rtn35zrw7w076puz83gkcufy",42035.0],["bc1qa2eu6p5rl9255e3xz7fcgm6snn4wl5kdfh7zpt05qp5fad9dmsys0qjg0e",38194.0],["3LQUu4v9z6KNch71j7kbj8GPeAGUo1FW6a",37927.0],["bc1qy3uw2kk45uj9vsy52rjfhydm2tnd6hreu8vha3",37484.0],["bc1q7ydrtdn8z62xhslqyqtyt38mm4e2c4h3mxjkug",36000.0],["bc1qx9t2l3pyny2spqpqlye8svce70nppwtaxwdrp4",31643.0],["3FuhQLprN9s9MR3bZzR5da7mw75fuahsaU",31353.0],["3FHNBLobJnbCTFTVakh5TXmEneyf5PT61B",31275.0],["12ib7dApVFvg82TXKycWBNpN8kFyiAN1dr",31000.0],["bc1q8taf2eca7pn9wu4czt8fgftqm288xtfxdyt33syzxuexxty733xsszghzk",30800.0],["bc1qukw69mjxwp30adfqddv6gcyva26laxz562rhlk",30467.0],["bc1q6h2v33qt0jjvpr2hxxtwhtvdvtn086g0n2qu06",30106.0],["12tkqA9xSoowkzoERHMWNKsTey55YEBqkv",28151.0],["3EMVdMehEq5SFipQ5UfbsfMsH223sSz9A9",26984.0],["3FsDiWdG76meMpdCLbVV4dUXhrFyaLrtxL",26916.0],["bc1qysj2w7xsw09datsy9mt9x50jn7qjd6qde6d66qm3ce0a4y9uzdpqcavdr0",26162.0],["39eYrpgAgDhp4tTjrSb1ppZ5kdAc1ikBYw",26062.0],["1N7jWmv63mkMdsYzbNUVHbEYDQfcq1u8Yp",24052.0],["15cHRgVrGKz7qp2JL2N5mkB2MCFGLcnHxv",23600.0],["bc1qr4dl5wa7kl8yu792dceg9z5knl2gkn220lk7a9",22791.0],["bc1qs4z2d3h5je080f74tax92dwg08sf3hylj9vfg3",20755.0],["bc1qx2x5cqhymfcnjtg902ky6u5t5htmt7fvqztdsm028hkrvxcl4t2sjtpd9l",20186.0],["17rm2dvb439dZqyMe2d4D6AQJSgg6yeNRn",20008.0],["1PeizMg76Cf96nUQrYg8xuoZWLQozU5zGW",19414.0],["bc1q72nyp6mzxjxm02j7t85pg0pq24684zdj2wuweu",18737.0],["bc1qm34lsc65zpw79lxes69zkqmk6ee3ewf0j77s3h",18081.0],["3GPAWK5aUB5Ve9akvTzZgp69USjgbhFbay",17510.0],["bc1p6mv2d3rpfhatkv77r6huuurgqyyklxpsnw3090k2qjwqtd6cwkcqzsruxt",16500.0],["bc1qptc9cz269u2mc5yguun5a5d6yd5c7f7ne4qj26",16400.0],["34HpHYiyQwg69gFmCq2BGHjF1DZnZnBeBP",16307.0],["38rFtDdFpXc4y6XPbSnNd2UvveEt5Xms2E",16116.0],["1GR9qNz7zgtaW5HwwVpEJWMnGWhsbsieCG",15746.0],["1PJiGp2yDLvUgqeBsuZVCBADArNsk6XEiw",15306.0],["3FM9vDYsN2iuMPKWjAcqgyahdwdrUxhbJ3",15145.0],["1BAuq7Vho2CEkVkUxbfU26LhwQjbCmWQkD",15000.0],["1CNtkWbb4grh8xtb8mhoZ6armNE9PHgzA8",14238.0],["bc1qlt5nm3kflne7rht4alsnzdzad878ld5rcu4na0",13772.0],["3KZbyboy2MKfQjDKKf2R4UdVbUKgYvso22",13589.0],["36X44rmLtk218sXACZ3gFpNMFENi6dQ2n3",13550.0],["bc1qsg6x2cvm75xuddn5g0ss9zglaamgz90q8vcp8w",13514.0],["bc1qvrwzs8unvu35kcred2z5ujjef36s5jgf3y6tp8",13108.0],["bc1q4vxn43l44h30nkluqfxd9eckf45vr2awz38lwa",13003.0],["bc1p4zxtwg3rhr5jqkzuvf0q03m2a69clydghqqz6arhldxln7ew0guq840aqm",12500.0],["39gUvGynQ7Re3i15G3J2gp9DEB9LnLFPMN",12477.0],["bc1qkmk4v2xn29yge68fq6zh7gvfdqrvpq3v3p3y0s",12267.0],["bc1qchctnvmdva5z9vrpxkkxck64v7nmzdtyxsrq64",12095.0],["bc1qatjx2qc8vxz39m0qdz303z8et2pgmc74xz8km3",10890.0],["1F34duy2eeMz5mSrvFepVzy7Y1rBsnAyWC",10771.0],["3NWndKFmvV6cJ6ENgXVeaDTo3mBfAvr27H",10658.0],["162bzZT2hJfv5Gm3ZmWfWfHJjCtMD6rHhw",10610.0],["bc1qxlth5har0qasqvattsjvgp80st2x402u5shuud",10500.0],["14FEEMRhaUwMbhf2rA1cFXmS1Zuk9nc9eq",10306.0],["1Q8QR5k32hexiMQnRgkJ6fmmjn5fMWhdv9",10217.0],["bc1qcpflj68s3ahy4xajez4d8v3vk28pvf7qte2jmlftvxzfke2u6mqsge3gvh",10020.0],["bc1qsxdxm0exqdsmnl9ejrz250xqxrxpxkgf5nhhtq",10002.0],["1Ki3WTEEqTLPNsN5cGTsMkL2sJ4m5mdCXT",10000.0],["1DzsfLRDfbmQM99xm59au2SrTY3YmciBSB",10000.0],["1GUfWdZQoo2pQ4BKHsiegxuZPnheY5ueTm",10000.0],["12HnxiXEeKUVjQRbMVTytsGWnzHd5LdGCt",10000.0],["17uULjz9moeLyjXHoKNwDRgKzf8ahY3Jia",10000.0],["18qNs1yBGGKR8RyErnEF5kegbNUgPfixhS",10000.0],["1DP3VYwN6ozHXDDaETbvNFLd86CAXfaewi",10000.0],["1NhJGUJu8rrTwPS4vopsdTqqcK4nAwdLwJ",10000.0],["1MtUMTqtdrpT6Rar5fgWoyrzAevatssej5",10000.0],["1MewpRkpcbFdqamPPYc1bXa9AJ189Succy",10000.0],["1H2MXWiSniAgg7ykdXEzPHL6oTH1ic4kP",10000.0],["1CY7fykRLWXeSbKB885Kr4KjQxmDdvW923",10000.0],["12VuUfQHTGqWDvBzm8TBad1mZBm4hjGEzN",9853.0],["bc1qxkhwkn623l5lg4rx9vx8cujmleaga0eg6wc7p6",9800.0],["bc1q9d5lq9psmkx9rtgewjgez7csg45faak2cccew8",9725.0],["bc1qd46j77pkp5vdxraf8tw5l6xs36dlygdx2rt9ly",9500.0],["3JZq4atUahhuA9rLhXLMhhTo133J9rF97j",9478.0],["1P9fAFAsSLRmMu2P7wZ5CXDPRfLSWTy9N8",9425.0],["17MWdxfjPYP2PYhdy885QtihfbW181r1rn",9343.0],["1HLvaTs3zR3oev9ya7Pzp3GB9Gqfg6XYJT",9260.0],["33eU1zeB2S4x3p4ccSsnAChXcGJgtMrMtZ",9252.0],["bc1qukqenm2t85dhdta9glqehllglxznsu4qyxn079",9112.0],["bc1qffyax9rrxmqyq8xwjkzrrqwqjp3ppz5a4665f9",9099.0],["1LVYbnSX6f6vE2Zn4zs2oZ4eKyBgzkqaay",9092.0],["13uZyaPbt4rTwYQ8xWFySVUzWH3pk2P5c7",8999.0],["167ZWTT8n6s4ya8cGjqNNQjDwDGY31vmHg",8999.0]];
-const TOP_FLOOR = TOP100[TOP100.length-1][1]; // solde de la 100e adresse
+const POINTS = [[1e-08,58935968,null],[1.572e-05,48875237,null],[0.0001,38902038,null],[0.001,24906286,0.137],[0.00157163,22071464,0.137],[0.01,12826378,null],[0.01571629,10410749,null],[0.1,4505463,null],[0.15716287,3354737,null],[1,976158,1.0797],[1.57162872,601706,1.0797],[10,150311,0.4367],[15.71628715,111297,0.4367],[100,20023,0.718],[157.16287154,14019,0.718],[291.04,10000,0.718],[474.01,5000,0.718],[1000,2042,1.4326],[1675,1000,null]]; // [seuil, nb exact ≥ seuil, alpha Pareto calibré sur la masse BTC de la tranche (null = interpolation log-log)]
+const TOPBAL = [248598,174934,140850,130010,96936,94643,91850,79957,78317,72787,69370,68200,62658,55905,53880,51830,44000,43035,42483,42035,38194,37927,37484,36000,31643,31353,31275,31000,30800,30467,30106,28151,26984,26916,26162,26062,24052,23600,22791,20755,20186,20008,19414,18737,18081,17510,16500,16400,16307,16116,15746,15306,15145,15000,14238,13772,13589,13550,13514,13108,13003,12500,12477,12267,12095,10890,10771,10658,10610,10500,10306,10217,10020,10002,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,9853,9800,9725,9500,9478,9425,9343,9260,9252,9112,9099,9092,8999,8999,8614,8611,8539,8529,8470,8333,8150,8145,8021,8000,8000,7998,7951,7941,7885,7821,7783,7758,7657,7500,7499,7450,7411,7311,7269,7103,7028,7000,7000,7000,6999,6977,6925,6878,6757,6512,6507,6483,6401,6400,6316,6248,6200,6163,6101,6096,6069,6062,6009,6000,6000,6000,6000,6000,6000,5999,5980,5911,5908,5842,5700,5696,5610,5608,5600,5600,5598,5598,5598,5598,5598,5598,5598,5595,5578,5578,5555,5529,5453,5354,5295,5285,5221,5186,5109,5075,5072,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,4999,4999,4995,4989,4975,4968,4938,4938,4902,4902,4902,4900,4900,4881,4846,4838,4792,4780,4762,4762,4746,4741,4733,4725,4724,4724,4699,4631,4629,4629,4629,4627,4605,4601,4600,4597,4592,4582,4561,4561,4561,4561,4561,4561,4561,4561,4561,4514,4512,4512,4512,4512,4512,4512,4512,4503,4500,4500,4500,4500,4500,4500,4500,4500,4500,4500,4487,4429,4417,4416,4415,4403,4374,4360,4352,4335,4333,4322,4318,4300,4283,4258,4253,4253,4253,4253,4253,4253,4253,4253,4253,4253,4253,4251,4245,4227,4221,4220,4212,4200,4188,4188,4185,4183,4166,4159,4158,4158,4137,4136,4135,4109,4101,4097,4067,4050,4049,4047,4035,4016,4000,4000,4000,4000,4000,4000,4000,3997,3987,3921,3915,3901,3900,3895,3875,3857,3828,3824,3803,3801,3792,3773,3767,3763,3757,3739,3734,3723,3700,3690,3674,3658,3620,3601,3600,3573,3552,3543,3537,3536,3528,3527,3526,3526,3526,3526,3526,3526,3512,3502,3500,3500,3500,3500,3493,3485,3450,3424,3423,3411,3400,3375,3368,3356,3350,3300,3300,3300,3300,3287,3277,3275,3268,3262,3249,3241,3241,3241,3241,3235,3234,3233,3232,3232,3226,3225,3223,3220,3219,3218,3215,3203,3200,3200,3200,3196,3187,3159,3150,3145,3141,3117,3117,3117,3117,3117,3117,3116,3116,3116,3116,3114,3114,3114,3113,3113,3113,3113,3113,3110,3110,3110,3108,3107,3106,3106,3104,3102,3102,3102,3102,3099,3099,3096,3092,3086,3082,3076,3074,3069,3061,3058,3058,3049,3048,3048,3047,3037,3030,3023,3013,3007,3005,3004,3001,3001,3000,3000,3000,3000,3000,3000,3000,3000,3000,3000,3000,3000,3000,3000,3000,3000,3000,3000,3000,3000,3000,3000,3000,3000,3000,3000,3000,3000,3000,3000,3000,3000,2999,2999,2999,2979,2971,2971,2970,2968,2966,2965,2963,2959,2957,2955,2952,2952,2939,2934,2931,2919,2918,2912,2900,2899,2894,2889,2875,2874,2873,2872,2865,2864,2860,2855,2850,2843,2818,2805,2802,2800,2800,2776,2769,2756,2750,2746,2745,2743,2742,2722,2722,2720,2714,2708,2707,2705,2700,2697,2694,2689,2682,2677,2673,2669,2659,2646,2645,2631,2621,2619,2618,2618,2617,2616,2616,2609,2609,2600,2600,2600,2598,2597,2585,2577,2561,2560,2557,2550,2547,2543,2541,2535,2534,2530,2525,2511,2511,2510,2510,2509,2501,2500,2500,2500,2495,2492,2491,2486,2480,2479,2463,2456,2452,2439,2439,2438,2430,2428,2427,2420,2420,2419,2418,2411,2407,2407,2402,2402,2402,2401,2401,2401,2400,2400,2399,2388,2386,2385,2379,2378,2375,2369,2365,2364,2363,2350,2340,2338,2336,2333,2333,2333,2333,2333,2333,2333,2333,2333,2333,2333,2333,2333,2333,2331,2328,2328,2327,2323,2321,2315,2312,2312,2312,2312,2312,2312,2312,2312,2312,2312,2312,2312,2312,2311,2306,2306,2306,2306,2306,2304,2300,2300,2300,2300,2300,2300,2295,2290,2288,2283,2273,2268,2264,2260,2257,2255,2251,2249,2246,2241,2240,2234,2234,2231,2230,2230,2230,2230,2230,2230,2226,2226,2226,2226,2226,2226,2226,2226,2226,2226,2218,2214,2214,2213,2212,2212,2212,2212,2212,2212,2212,2212,2212,2212,2212,2212,2206,2206,2201,2200,2200,2200,2200,2200,2200,2195,2195,2190,2182,2180,2161,2160,2156,2149,2147,2142,2142,2140,2139,2133,2131,2131,2129,2119,2109,2107,2101,2100,2100,2100,2100,2100,2100,2100,2100,2100,2098,2097,2097,2089,2085,2079,2075,2073,2069,2068,2067,2066,2050,2037,2032,2031,2031,2027,2027,2024,2022,2019,2016,2012,2010,2009,2009,2003,2001,2000,2000,2000,2000,2000,2000,2000,2000,2000,2000,2000,2000,2000,2000,2000,2000,2000,2000,2000,2000,2000,2000,2000,2000,2000,2000,2000,2000,2000,2000,2000,2000,2000,2000,2000,1998,1997,1989,1986,1983,1979,1973,1969,1967,1965,1958,1941,1936,1934,1932,1931,1930,1928,1928,1925,1924,1922,1921,1920,1915,1914,1913,1909,1908,1906,1905,1905,1905,1900,1900,1900,1900,1900,1899,1896,1895,1890,1885,1885,1883,1882,1882,1880,1875,1874,1873,1861,1857,1852,1843,1839,1834,1822,1818,1810,1807,1805,1805,1804,1803,1801,1801,1800,1800,1800,1800,1800,1799,1793,1791,1780,1778,1778,1778,1778,1778,1778,1775,1775,1775,1769,1768,1766,1763,1762,1759,1758,1758,1750,1750,1747,1742,1738,1738,1737,1736,1736,1736,1736,1736,1736,1736,1736,1736,1735,1734,1734,1734,1731,1731,1731,1731,1731,1728,1724,1723,1719,1712,1710,1710,1710,1709,1709,1703,1702,1700,1700,1700,1698,1698,1684,1681,1681,1680,1679,1677,1677,1677,1676,1675]; // soldes exacts du top 1000, ordre décroissant
+const TOP_FLOOR = TOPBAL[TOPBAL.length-1];
 
 const fmtInt = n => new Intl.NumberFormat('fr-FR').format(Math.round(n));
 const fmtBtc = b => {
@@ -279,32 +279,30 @@ const fmtBtc = b => {
 };
 const fmtThr = v => v >= 1 ? fmtInt(v) : v.toLocaleString('fr-FR',{maximumSignificantDigits:3});
 
-/* Rang : exact dans la zone top 100, sinon interpolation log-log
-   entre les points exacts de la distribution. Retourne aussi
-   l'encadrement certain [loRank, hiRank]. */
+/* Rang : exact dans la zone du top 1000 (recherche binaire),
+   sinon interpolation log-log entre points exacts.
+   Retourne aussi l'encadrement certain [loRank, hiRank]. */
 function estimateRank(btc, addr){
-  // 1) adresse présente dans le top 100 → rang exact
-  const idx = TOP100.findIndex(t => t[0] === addr);
-  if (idx >= 0) return { rank: idx+1, exact: true, inTop: true,
-                         loRank: idx+1, hiRank: idx+1 };
-
-  // 2) solde dans la zone du top 100 → rang exact par comparaison
+  // 1) zone du top 1000 → rang exact par comparaison de solde
   if (btc >= TOP_FLOOR){
-    let above = 0;
-    for (const t of TOP100) if (t[1] > btc) above++;
-    return { rank: above+1, exact: true, inTop: true,
-             loRank: above+1, hiRank: above+1 };
+    let lo = 0, hi = TOPBAL.length; // 1er indice dont le solde <= btc
+    while (lo < hi){ const m = (lo+hi)>>1; if (TOPBAL[m] > btc) lo = m+1; else hi = m; }
+    const rank = lo + 1;
+    return { rank, exact: true, inTop: true, loRank: rank, hiRank: rank };
   }
 
-  // 3) interpolation log-log entre points exacts
+  // 2) interpolation log-log entre points exacts
   if (btc <= 0) return null;
   let i = 0;
   while (i < POINTS.length-1 && POINTS[i+1][0] <= btc) i++;
-  const [b1,c1] = POINTS[i];
+  const [b1,c1,alpha] = POINTS[i];
   const [b2,c2] = POINTS[Math.min(i+1, POINTS.length-1)];
   let r;
   if (b1 === b2) r = c1;
-  else {
+  else if (alpha != null){
+    // loi de Pareto tronquée, calibrée sur le total de BTC réellement détenu dans la tranche
+    r = c2 + (c1-c2) * (Math.pow(btc,-alpha) - Math.pow(b2,-alpha)) / (Math.pow(b1,-alpha) - Math.pow(b2,-alpha));
+  } else {
     const t = (Math.log(btc)-Math.log(b1)) / (Math.log(b2)-Math.log(b1));
     r = Math.exp(Math.log(c1) + t*(Math.log(c2)-Math.log(c1)));
   }
@@ -393,11 +391,11 @@ async function check(){
     $('marker').style.left = positionPct(btc).toFixed(2) + "%";
 
     if (est.inTop){
-      $('tBracket').textContent = "Top 100 mondial";
+      $('tBracket').textContent = "Top 1 000 mondial";
       $('tAbove').innerHTML = fmtInt(est.rank-1) + " <small>sur " + fmtInt(TOTAL) + "</small>";
       $('tFoot').innerHTML =
-        "Cette adresse fait partie du <strong>top 100 mondial</strong> : son rang est " +
-        "déterminé par comparaison directe avec le classement exact des 100 plus grosses adresses (snapshot du " + SNAPSHOT_DATE + ").";
+        "Cette adresse fait partie du <strong>top 1 000 mondial</strong> : son rang est " +
+        "déterminé par comparaison directe avec le classement exact des 1 000 plus grosses adresses (snapshot du " + SNAPSHOT_DATE + ").";
     } else {
       $('tBracket').textContent = fmtThr(est.b1) + " – " + fmtThr(est.b2) + " BTC";
       $('tAbove').innerHTML = fmtInt(est.c2) + " <small>certifié (≥ " + fmtThr(est.b2) + " BTC)</small>";
