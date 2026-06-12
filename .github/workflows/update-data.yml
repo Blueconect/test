@@ -1,0 +1,31 @@
+name: Mise à jour nocturne des données richlist
+
+on:
+  schedule:
+    - cron: "30 3 * * *"   # chaque nuit à 03h30 UTC (05h30 heure suisse)
+  workflow_dispatch:        # + bouton de lancement manuel dans l'onglet Actions
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
+      - name: Régénérer data.js
+        run: python3 update_data.py
+        # si le script échoue (source indisponible, données incohérentes),
+        # le job s'arrête ici : data.js n'est pas modifié, le site garde
+        # les données de la veille.
+
+      - name: Publier si les données ont changé
+        run: |
+          git config user.name "richlist-bot"
+          git config user.email "actions@github.com"
+          git add data.js
+          git diff --cached --quiet && echo "Aucun changement" && exit 0
+          git commit -m "Données du $(date -u +%Y-%m-%d)"
+          git push
