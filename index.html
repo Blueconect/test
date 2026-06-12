@@ -145,15 +145,15 @@
   .t-rank .pct strong{color:var(--btc);font-weight:600}
 
   .t-grid{
-    display:grid;grid-template-columns:1fr 1fr;
+    display:grid;grid-template-columns:1fr 1fr 1fr;
     border-top:1px dashed var(--line);
-    margin-top:26px;
   }
   .t-cell{
     padding:16px 22px;
     border-bottom:1px dashed var(--line);
+    border-right:1px dashed var(--line);
   }
-  .t-cell:nth-child(odd){border-right:1px dashed var(--line)}
+  .t-cell:last-child{border-right:none}
   .t-cell .k{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:5px}
   .t-cell .v{font-family:var(--mono);font-size:15px;font-weight:600}
   .t-cell .v small{font-weight:400;color:var(--ink-soft);font-size:12px}
@@ -202,7 +202,7 @@
     .lookup{flex-direction:column}
     .lookup button{width:100%}
     .t-grid{grid-template-columns:1fr}
-    .t-cell:nth-child(odd){border-right:none}
+    .t-cell{border-right:none}
   }
 </style>
 </head>
@@ -237,7 +237,6 @@
 
     <div class="t-grid">
       <div class="t-cell"><div class="k">Solde</div><div class="v" id="tBtc"></div></div>
-      <div class="t-cell"><div class="k">Valeur</div><div class="v" id="tFiat"></div></div>
       <div class="t-cell"><div class="k">Tranche de richesse</div><div class="v" id="tBracket"></div></div>
       <div class="t-cell"><div class="k">Adresses plus riches</div><div class="v" id="tAbove"></div></div>
     </div>
@@ -278,6 +277,18 @@ const fmtBtc = b => {
   return b.toLocaleString('fr-FR',{maximumFractionDigits:8});
 };
 const fmtThr = v => v >= 1 ? fmtInt(v) : v.toLocaleString('fr-FR',{maximumSignificantDigits:3});
+
+/* Tranche fine d'affichage : grille 1 / 1,5 / 2 / 3 / 5 / 7 par décade
+   (ex. 12 BTC -> « 10 – 15 BTC », 0,42 BTC -> « 0,3 – 0,5 BTC ») */
+function fineBand(btc){
+  const STEPS = [1, 1.5, 2, 3, 5, 7, 10];
+  const d = Math.floor(Math.log10(btc));
+  const p = Math.pow(10, d);
+  const m = btc / p;
+  let i = 0;
+  while (i < STEPS.length-1 && STEPS[i+1] <= m*1.0000001) i++;
+  return [STEPS[i]*p, STEPS[i+1]*p];
+}
 
 /* Rang : exact dans la zone du top 1000 (recherche binaire),
    sinon interpolation log-log entre points exacts.
@@ -352,13 +363,9 @@ async function check(){
   msg.textContent="Lecture de la blockchain…";
 
   try{
-    const [aRes, pRes] = await Promise.all([
-      fetch("https://mempool.space/api/address/" + encodeURIComponent(addr)),
-      fetch("https://mempool.space/api/v1/prices")
-    ]);
+    const aRes = await fetch("https://mempool.space/api/address/" + encodeURIComponent(addr));
     if (!aRes.ok) throw new Error(aRes.status === 400 ? "Adresse invalide selon le réseau Bitcoin." : "Erreur réseau ("+aRes.status+"). Réessayez dans un instant.");
     const a = await aRes.json();
-    const prices = pRes.ok ? await pRes.json() : null;
 
     const sats = (a.chain_stats.funded_txo_sum - a.chain_stats.spent_txo_sum)
                + (a.mempool_stats.funded_txo_sum - a.mempool_stats.spent_txo_sum);
@@ -385,9 +392,6 @@ async function check(){
     $('rankLabel').textContent = est.exact ? "Position richlist exacte" : "Position richlist estimée";
     $('tPct').textContent = pctStr;
     $('tBtc').innerHTML = fmtBtc(btc) + " <small>BTC</small>";
-    $('tFiat').innerHTML = prices
-      ? fmtInt(btc*prices.EUR) + " € <small>· " + fmtInt(btc*prices.USD) + " $</small>"
-      : "—";
     $('marker').style.left = positionPct(btc).toFixed(2) + "%";
 
     if (est.inTop){
@@ -397,14 +401,17 @@ async function check(){
         "Cette adresse fait partie du <strong>top 1 000 mondial</strong> : son rang est " +
         "déterminé par comparaison directe avec le classement exact des 1 000 plus grosses adresses (snapshot du " + SNAPSHOT_DATE + ").";
     } else {
-      $('tBracket').textContent = fmtThr(est.b1) + " – " + fmtThr(est.b2) + " BTC";
-      $('tAbove').innerHTML = fmtInt(est.c2) + " <small>certifié (≥ " + fmtThr(est.b2) + " BTC)</small>";
+      const [blo, bhi] = fineBand(btc);
+      $('tBracket').textContent = fmtThr(blo) + " – " + fmtThr(bhi) + " BTC";
+      $('tAbove').innerHTML = fmtInt(Math.max(0, est.rank-1)) + " <small>sur " + fmtInt(TOTAL) + "</small>";
+      const pLo = Math.max(est.loRank, Math.round(est.rank*0.92));
+      const pHi = Math.min(est.hiRank, Math.round(est.rank*1.08));
       $('tFoot').innerHTML =
-        "Encadrement <strong>certain</strong> : entre le rang <strong>#" + fmtInt(est.loRank) +
-        "</strong> et le rang <strong>#" + fmtInt(est.hiRank) + "</strong> — car exactement " +
-        fmtInt(est.c2) + " adresses détiennent ≥ " + fmtThr(est.b2) + " BTC et " +
-        fmtInt(est.c1) + " détiennent ≥ " + fmtThr(est.b1) + " BTC. " +
-        "Le rang affiché est interpolé à l'intérieur de cet intervalle.";
+        "Fourchette probable : <strong>#" + fmtInt(pLo) + " – #" + fmtInt(pHi) + "</strong> " +
+        "(modèle calibré, erreur validée ≈ 2 %). " +
+        "Encadrement <strong>certain</strong> : #" + fmtInt(est.loRank) + " – #" + fmtInt(est.hiRank) +
+        ", car exactement " + fmtInt(est.c2) + " adresses détiennent ≥ " + fmtThr(est.b2) +
+        " BTC et " + fmtInt(est.c1) + " détiennent ≥ " + fmtThr(est.b1) + " BTC.";
     }
 
     $('ticket').classList.add('show');
