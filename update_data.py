@@ -192,12 +192,14 @@ def main():
 
     # ── 9) Écriture de data.js ─────────────────────────────────────────
     today = date.today()
+    snap_iso = today.isoformat()
     snap = f"{today.day} {MOIS[today.month - 1]} {today.year}"
     bal_js = "[" + ",".join(f"{b:.2f}".rstrip("0").rstrip(".") for b in bals) + "]"
     pts_js = json.dumps(final, separators=(",", ":"))
 
     out = f"""/* Données générées automatiquement — ne pas modifier à la main.
    Régénéré chaque nuit par update_data.py via GitHub Actions. */
+const SNAPSHOT_ISO = "{snap_iso}";
 const SNAPSHOT_DATE = "{snap}";
 const TOTAL = {total};
 const POINTS = {pts_js}; // [seuil, nb exact ≥ seuil, alpha Pareto calibré sur la masse BTC de la tranche (null = interpolation log-log)]
