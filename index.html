@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rang BTC — Position Richlist d'une adresse Bitcoin</title>
+<title>BTC Rank — Richlist position of any Bitcoin address</title>
+<meta name="description" content="Check the exact richlist rank of any Bitcoin address. Live on-chain balance, calibrated ranking among all non-empty addresses, updated daily.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -170,7 +171,7 @@
     transform:translateX(-1px);
   }
   .marker::after{
-    content:"VOUS";
+    content:var(--you,"YOU");
     position:absolute;top:-20px;left:50%;transform:translateX(-50%);
     font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.1em;
     background:var(--ink);color:#fff;padding:2px 6px;border-radius:4px;
@@ -198,6 +199,15 @@
   }
   footer a{color:var(--ink-soft)}
 
+  .langs{display:flex;gap:6px;justify-content:center;margin-top:14px}
+  .langs button{
+    font-size:16px;line-height:1;background:var(--card);border:1px solid var(--line);
+    border-radius:8px;padding:6px 9px;cursor:pointer;opacity:.55;transition:opacity .15s,border-color .15s;
+  }
+  .langs button:hover{opacity:1}
+  .langs button.on{opacity:1;border-color:var(--btc)}
+  .langs button:focus-visible{outline:2px solid var(--btc);outline-offset:2px}
+
   @media(max-width:520px){
     .lookup{flex-direction:column}
     .lookup button{width:100%}
@@ -209,52 +219,52 @@
 <body>
 <div class="wrap">
 
-  <div class="eyebrow">richlist bitcoin · données on-chain</div>
-  <h1>Quel est le rang de votre adresse <span class="btc">₿</span>&nbsp;?</h1>
-  <p class="sub">Entrez une adresse Bitcoin : son solde exact est lu en direct sur la blockchain, puis sa position est calculée parmi les <span id="totalAddr">58,9 millions</span> d'adresses non vides.</p>
+  <div class="eyebrow" id="iEyebrow"></div>
+  <h1 id="iH1"></h1>
+  <p class="sub" id="iSub"></p>
 
   <div class="lookup">
     <input id="addr" type="text" spellcheck="false" autocomplete="off"
-           placeholder="bc1q…, 3…, 1…  (adresse Bitcoin)"
-           aria-label="Adresse Bitcoin">
-    <button id="go" type="button">Vérifier le rang</button>
+           placeholder=""
+           aria-label="Bitcoin address">
+    <button id="go" type="button"></button>
   </div>
-  <p class="hint">Aucune donnée n'est enregistrée — la requête part directement de votre navigateur vers mempool.space.</p>
+  <p class="hint" id="iHint"></p>
 
   <div id="msg" class="msg" role="status"></div>
 
   <div id="ticket" class="ticket" aria-live="polite">
     <div class="t-head">
       <span class="t-addr" id="tAddr"></span>
-      <span class="t-badge">vérifié on-chain</span>
+      <span class="t-badge" id="iBadge"></span>
     </div>
 
     <div class="t-rank">
-      <div class="label" id="rankLabel">Position richlist estimée</div>
+      <div class="label" id="rankLabel"></div>
       <div class="value"><span class="hash">#</span><span id="tRank"></span></div>
-      <div class="pct">Top <strong id="tPct"></strong> de toutes les adresses Bitcoin</div>
+      <div class="pct" id="iPct"></div>
     </div>
 
     <div class="t-grid">
-      <div class="t-cell"><div class="k">Solde</div><div class="v" id="tBtc"></div></div>
-      <div class="t-cell"><div class="k">Tranche de richesse</div><div class="v" id="tBracket"></div></div>
-      <div class="t-cell"><div class="k">Adresses plus riches</div><div class="v" id="tAbove"></div></div>
+      <div class="t-cell"><div class="k" id="kBal"></div><div class="v" id="tBtc"></div></div>
+      <div class="t-cell"><div class="k" id="kBracket"></div><div class="v" id="tBracket"></div></div>
+      <div class="t-cell"><div class="k" id="kAbove"></div><div class="v" id="tAbove"></div></div>
     </div>
 
     <div class="ladder">
-      <div class="k">Votre position sur l'échelle (logarithmique)</div>
+      <div class="k" id="iLadder"></div>
       <div class="rail"><div class="marker" id="marker"></div></div>
       <div class="ticks" id="ticks"></div>
-      <div class="legend"><span>← plus petites</span><span>plus riches →</span></div>
+      <div class="legend"><span id="iLegL"></span><span id="iLegR"></span></div>
     </div>
 
     <div class="t-foot" id="tFoot"></div>
   </div>
 
   <footer>
-    Solde en temps réel : API <a href="https://mempool.space" target="_blank" rel="noopener">mempool.space</a> ·
-    Distribution des adresses : snapshot du <span id="snapDate"></span> (source publique)<br>
-    Le rang est une estimation par interpolation dans la tranche de solde — modèle calibré sur la masse BTC réelle de chaque tranche, erreur typique 1–2 %.
+    <span id="iFoot1"></span><br>
+    <span id="iFoot2"></span>
+    <div class="langs" id="langs" role="group" aria-label="Language"></div>
   </footer>
 </div>
 
@@ -267,13 +277,13 @@
    ════════════════════════════════════════════════════════════ */
 /* SNAPSHOT_DATE, TOTAL, POINTS, TOPBAL, TOP_FLOOR sont chargés depuis data.js */
 
-const fmtInt = n => new Intl.NumberFormat('fr-FR').format(Math.round(n));
+const fmtInt = n => new Intl.NumberFormat(locale()).format(Math.round(n));
 const fmtBtc = b => {
-  if (b >= 1)      return b.toLocaleString('fr-FR',{maximumFractionDigits:4});
-  if (b >= 0.0001) return b.toLocaleString('fr-FR',{maximumFractionDigits:6});
-  return b.toLocaleString('fr-FR',{maximumFractionDigits:8});
+  if (b >= 1)      return b.toLocaleString(locale(),{maximumFractionDigits:4});
+  if (b >= 0.0001) return b.toLocaleString(locale(),{maximumFractionDigits:6});
+  return b.toLocaleString(locale(),{maximumFractionDigits:8});
 };
-const fmtThr = v => v >= 1 ? fmtInt(v) : v.toLocaleString('fr-FR',{maximumSignificantDigits:3});
+const fmtThr = v => v >= 1 ? fmtInt(v) : v.toLocaleString(locale(),{maximumSignificantDigits:3});
 
 /* Tranche fine d'affichage : grille 1 / 1,5 / 2 / 3 / 5 / 7 par décade
    (ex. 12 BTC -> « 10 – 15 BTC », 0,42 BTC -> « 0,3 – 0,5 BTC ») */
@@ -338,9 +348,227 @@ function buildTicks(){
 }
 
 const $ = id => document.getElementById(id);
-$('totalAddr').textContent = (TOTAL/1e6).toLocaleString('fr-FR',{maximumFractionDigits:1}) + " millions";
-$('snapDate').textContent = SNAPSHOT_DATE;
+
+/* ── Internationalisation ───────────────────────────────────── */
+const LANGS = { en:"🇬🇧", fr:"🇫🇷", es:"🇪🇸", de:"🇩🇪", zh:"🇨🇳" };
+const LOCALES = { en:"en-US", fr:"fr-FR", es:"es-ES", de:"de-DE", zh:"zh-CN" };
+const I18N = {
+en:{title:"BTC Rank — Richlist position of any Bitcoin address",
+ eyebrow:"bitcoin richlist · on-chain data",
+ h1:'What\u2019s the rank of your <span class="btc">\u20BF</span>&nbsp;address?',
+ sub:"Enter a Bitcoin address: its exact balance is read live from the blockchain, then its position is computed among all {n} non-empty addresses.",
+ ph:"bc1q…, 3…, 1…  (Bitcoin address)", btn:"Check rank",
+ hint:"Nothing is stored — the request goes straight from your browser to mempool.space.",
+ errEmpty:"Enter a Bitcoin address.",
+ errFormat:"Unrecognized address format. Accepted: Legacy (1…), SegWit (3…), Bech32 (bc1…).",
+ loading:"Reading the blockchain…",
+ errInvalid:"Invalid address according to the Bitcoin network.",
+ errNet:"Network error ({c}). Please try again shortly.",
+ errFetch:"Could not reach the API. Check your connection and try again.",
+ zero:"This address holds 0 BTC — it doesn\u2019t appear in any richlist. ",
+ zeroHist:"It does have a history of {n} transaction(s): the funds have been moved.",
+ zeroNo:"No transactions recorded.",
+ badge:"verified on-chain", rankExact:"Exact richlist position", rankEst:"Estimated richlist position",
+ pct:"Top <strong>{p}</strong> of all Bitcoin addresses",
+ kBal:"Balance", kBracket:"Wealth bracket", kAbove:"Richer addresses", ofTotal:"of {n}",
+ ladder:"Your position on the scale (logarithmic)", legL:"\u2190 smaller", legR:"richer \u2192", you:"YOU",
+ topBracket:"Global top 1,000",
+ footTop:"This address is part of the <strong>global top 1,000</strong>: its rank is determined by direct comparison against the exact ranking of the 1,000 largest addresses (snapshot of {d}).",
+ footEst:"Probable range: <strong>#{a} \u2013 #{b}</strong> (calibrated model, validated error \u2248 2%). <strong>Certain</strong> bounds: #{c} \u2013 #{e}, since exactly {n2} addresses hold \u2265 {b2} BTC and {n1} hold \u2265 {b1} BTC.",
+ foot1:'Live balance: <a href="https://mempool.space" target="_blank" rel="noopener">mempool.space</a> API · Address distribution: snapshot of {d} (public source)',
+ foot2:"Ranks come from a model calibrated on the real BTC mass of each bracket — typical error 1\u20132%."},
+fr:{title:"Rang BTC — Position Richlist d\u2019une adresse Bitcoin",
+ eyebrow:"richlist bitcoin · données on-chain",
+ h1:'Quel est le rang de votre adresse <span class="btc">\u20BF</span>&nbsp;?',
+ sub:"Entrez une adresse Bitcoin : son solde exact est lu en direct sur la blockchain, puis sa position est calculée parmi les {n} d\u2019adresses non vides.",
+ ph:"bc1q…, 3…, 1…  (adresse Bitcoin)", btn:"Vérifier le rang",
+ hint:"Aucune donnée n\u2019est enregistrée — la requête part directement de votre navigateur vers mempool.space.",
+ errEmpty:"Entrez une adresse Bitcoin.",
+ errFormat:"Format d\u2019adresse non reconnu. Formats acceptés : Legacy (1…), SegWit (3…), Bech32 (bc1…).",
+ loading:"Lecture de la blockchain…",
+ errInvalid:"Adresse invalide selon le réseau Bitcoin.",
+ errNet:"Erreur réseau ({c}). Réessayez dans un instant.",
+ errFetch:"Impossible de joindre l\u2019API. Vérifiez votre connexion et réessayez.",
+ zero:"Cette adresse a un solde de 0 BTC — elle n\u2019apparaît dans aucune richlist. ",
+ zeroHist:"Elle a pourtant un historique de {n} transaction(s) : les fonds ont été déplacés.",
+ zeroNo:"Aucune transaction enregistrée.",
+ badge:"vérifié on-chain", rankExact:"Position richlist exacte", rankEst:"Position richlist estimée",
+ pct:"Top <strong>{p}</strong> de toutes les adresses Bitcoin",
+ kBal:"Solde", kBracket:"Tranche de richesse", kAbove:"Adresses plus riches", ofTotal:"sur {n}",
+ ladder:"Votre position sur l\u2019échelle (logarithmique)", legL:"\u2190 plus petites", legR:"plus riches \u2192", you:"VOUS",
+ topBracket:"Top 1 000 mondial",
+ footTop:"Cette adresse fait partie du <strong>top 1 000 mondial</strong> : son rang est déterminé par comparaison directe avec le classement exact des 1 000 plus grosses adresses (snapshot du {d}).",
+ footEst:"Fourchette probable : <strong>#{a} \u2013 #{b}</strong> (modèle calibré, erreur validée \u2248 2 %). Encadrement <strong>certain</strong> : #{c} \u2013 #{e}, car exactement {n2} adresses détiennent \u2265 {b2} BTC et {n1} détiennent \u2265 {b1} BTC.",
+ foot1:'Solde en temps réel : API <a href="https://mempool.space" target="_blank" rel="noopener">mempool.space</a> · Distribution des adresses : snapshot du {d} (source publique)',
+ foot2:"Le rang provient d\u2019un modèle calibré sur la masse BTC réelle de chaque tranche — erreur typique 1\u20132 %."},
+es:{title:"Rango BTC — Posición richlist de cualquier dirección de Bitcoin",
+ eyebrow:"richlist de bitcoin · datos on-chain",
+ h1:'\u00BFCuál es el rango de tu dirección <span class="btc">\u20BF</span>?',
+ sub:"Introduce una dirección de Bitcoin: su saldo exacto se lee en directo de la blockchain y su posición se calcula entre las {n} de direcciones no vacías.",
+ ph:"bc1q…, 3…, 1…  (dirección de Bitcoin)", btn:"Comprobar rango",
+ hint:"No se guarda ningún dato: la petición va directamente de tu navegador a mempool.space.",
+ errEmpty:"Introduce una dirección de Bitcoin.",
+ errFormat:"Formato de dirección no reconocido. Aceptados: Legacy (1…), SegWit (3…), Bech32 (bc1…).",
+ loading:"Leyendo la blockchain…",
+ errInvalid:"Dirección inválida según la red de Bitcoin.",
+ errNet:"Error de red ({c}). Inténtalo de nuevo en un momento.",
+ errFetch:"No se pudo contactar con la API. Comprueba tu conexión e inténtalo de nuevo.",
+ zero:"Esta dirección tiene un saldo de 0 BTC: no aparece en ninguna richlist. ",
+ zeroHist:"Sin embargo tiene un historial de {n} transacción(es): los fondos fueron movidos.",
+ zeroNo:"Ninguna transacción registrada.",
+ badge:"verificado on-chain", rankExact:"Posición richlist exacta", rankEst:"Posición richlist estimada",
+ pct:"Top <strong>{p}</strong> de todas las direcciones de Bitcoin",
+ kBal:"Saldo", kBracket:"Tramo de riqueza", kAbove:"Direcciones más ricas", ofTotal:"de {n}",
+ ladder:"Tu posición en la escala (logarítmica)", legL:"\u2190 más pequeñas", legR:"más ricas \u2192", you:"TÚ",
+ topBracket:"Top 1.000 mundial",
+ footTop:"Esta dirección forma parte del <strong>top 1.000 mundial</strong>: su rango se determina por comparación directa con la clasificación exacta de las 1.000 direcciones más grandes (snapshot del {d}).",
+ footEst:"Rango probable: <strong>#{a} \u2013 #{b}</strong> (modelo calibrado, error validado \u2248 2 %). Límites <strong>ciertos</strong>: #{c} \u2013 #{e}, ya que exactamente {n2} direcciones poseen \u2265 {b2} BTC y {n1} poseen \u2265 {b1} BTC.",
+ foot1:'Saldo en tiempo real: API <a href="https://mempool.space" target="_blank" rel="noopener">mempool.space</a> · Distribución de direcciones: snapshot del {d} (fuente pública)',
+ foot2:"El rango proviene de un modelo calibrado con la masa real de BTC de cada tramo — error típico 1\u20132 %."},
+de:{title:"BTC-Rang — Richlist-Position jeder Bitcoin-Adresse",
+ eyebrow:"bitcoin richlist · on-chain-daten",
+ h1:'Welchen Rang hat deine <span class="btc">\u20BF</span>-Adresse?',
+ sub:"Gib eine Bitcoin-Adresse ein: ihr genaues Guthaben wird live aus der Blockchain gelesen und ihre Position unter allen {n} nicht leeren Adressen berechnet.",
+ ph:"bc1q…, 3…, 1…  (Bitcoin-Adresse)", btn:"Rang prüfen",
+ hint:"Es wird nichts gespeichert — die Anfrage geht direkt von deinem Browser an mempool.space.",
+ errEmpty:"Gib eine Bitcoin-Adresse ein.",
+ errFormat:"Adressformat nicht erkannt. Akzeptiert: Legacy (1…), SegWit (3…), Bech32 (bc1…).",
+ loading:"Blockchain wird gelesen…",
+ errInvalid:"Ungültige Adresse laut Bitcoin-Netzwerk.",
+ errNet:"Netzwerkfehler ({c}). Bitte versuche es gleich erneut.",
+ errFetch:"API nicht erreichbar. Prüfe deine Verbindung und versuche es erneut.",
+ zero:"Diese Adresse hat ein Guthaben von 0 BTC — sie erscheint in keiner Richlist. ",
+ zeroHist:"Sie hat jedoch eine Historie von {n} Transaktion(en): die Mittel wurden bewegt.",
+ zeroNo:"Keine Transaktionen verzeichnet.",
+ badge:"on-chain verifiziert", rankExact:"Exakte Richlist-Position", rankEst:"Geschätzte Richlist-Position",
+ pct:"Top <strong>{p}</strong> aller Bitcoin-Adressen",
+ kBal:"Guthaben", kBracket:"Vermögensklasse", kAbove:"Reichere Adressen", ofTotal:"von {n}",
+ ladder:"Deine Position auf der Skala (logarithmisch)", legL:"\u2190 kleinere", legR:"reichere \u2192", you:"DU",
+ topBracket:"Globale Top 1.000",
+ footTop:"Diese Adresse gehört zu den <strong>globalen Top 1.000</strong>: ihr Rang wird durch direkten Vergleich mit der exakten Rangliste der 1.000 größten Adressen bestimmt (Snapshot vom {d}).",
+ footEst:"Wahrscheinlicher Bereich: <strong>#{a} \u2013 #{b}</strong> (kalibriertes Modell, validierter Fehler \u2248 2 %). <strong>Sichere</strong> Grenzen: #{c} \u2013 #{e}, da genau {n2} Adressen \u2265 {b2} BTC halten und {n1} \u2265 {b1} BTC.",
+ foot1:'Live-Guthaben: <a href="https://mempool.space" target="_blank" rel="noopener">mempool.space</a>-API · Adressverteilung: Snapshot vom {d} (öffentliche Quelle)',
+ foot2:"Der Rang stammt aus einem Modell, das auf der realen BTC-Masse jeder Klasse kalibriert ist — typischer Fehler 1\u20132 %."},
+zh:{title:"BTC 排名 — 查询任意比特币地址的富豪榜位置",
+ eyebrow:"比特币富豪榜 · 链上数据",
+ h1:'你的 <span class="btc">\u20BF</span> 地址排名第几\uFF1F',
+ sub:"输入一个比特币地址\uFF1A系统实时读取链上余额\uFF0C并在全部 {n} 个非空地址中计算其排名。",
+ ph:"bc1q…, 3…, 1…\uFF08比特币地址\uFF09", btn:"查询排名",
+ hint:"不存储任何数据 — 请求由你的浏览器直接发送至 mempool.space。",
+ errEmpty:"请输入一个比特币地址。",
+ errFormat:"无法识别的地址格式。支持\uFF1ALegacy (1…)、SegWit (3…)、Bech32 (bc1…)。",
+ loading:"正在读取区块链…",
+ errInvalid:"比特币网络判定该地址无效。",
+ errNet:"网络错误\uFF08{c}\uFF09。请稍后重试。",
+ errFetch:"无法连接 API。请检查网络后重试。",
+ zero:"该地址余额为 0 BTC — 不在任何富豪榜中。",
+ zeroHist:"但它有 {n} 笔交易记录\uFF1A资金已被转移。",
+ zeroNo:"没有任何交易记录。",
+ badge:"链上已验证", rankExact:"富豪榜精确排名", rankEst:"富豪榜估算排名",
+ pct:"位于全部比特币地址的前 <strong>{p}</strong>",
+ kBal:"余额", kBracket:"财富区间", kAbove:"更富有的地址", ofTotal:"/ 共 {n}",
+ ladder:"你在\uFF08对数\uFF09刻度上的位置", legL:"\u2190 较小", legR:"更富 \u2192", you:"你",
+ topBracket:"全球前 1000",
+ footTop:"该地址位列<strong>全球前 1000</strong>\uFF1A其排名通过与 1000 个最大地址的精确榜单直接比较得出\uFF08快照日期 {d}\uFF09。",
+ footEst:"可能区间\uFF1A<strong>#{a} \u2013 #{b}</strong>\uFF08校准模型\uFF0C验证误差约 2%\uFF09。<strong>确定</strong>边界\uFF1A#{c} \u2013 #{e}\uFF0C因为确切有 {n2} 个地址持有 \u2265 {b2} BTC\uFF0C{n1} 个地址持有 \u2265 {b1} BTC。",
+ foot1:'实时余额\uFF1A<a href="https://mempool.space" target="_blank" rel="noopener">mempool.space</a> API · 地址分布\uFF1A{d} 快照\uFF08公开来源\uFF09',
+ foot2:"排名来自基于各区间真实 BTC 总量校准的模型 — 典型误差 1\u20132%。"}
+};
+
+let LANG = "en";
+try {
+  const saved = localStorage.getItem("lang");
+  if (saved && I18N[saved]) LANG = saved;
+  else { const nav = (navigator.language||"en").slice(0,2); if (I18N[nav]) LANG = nav; }
+} catch(e){}
+
+const t = (k, vars) => {
+  let s = (I18N[LANG] && I18N[LANG][k]) || I18N.en[k] || k;
+  if (vars) for (const [key,v] of Object.entries(vars)) s = s.split("{"+key+"}").join(v);
+  return s;
+};
+const locale = () => LOCALES[LANG] || "en-US";
+const snapDateStr = () => {
+  if (typeof SNAPSHOT_ISO !== "undefined"){
+    const [y,m,d] = SNAPSHOT_ISO.split("-").map(Number);
+    return new Date(Date.UTC(y, m-1, d)).toLocaleDateString(locale(), {day:"numeric", month:"long", year:"numeric", timeZone:"UTC"});
+  }
+  return SNAPSHOT_DATE; // repli si data.js n'a pas encore été régénéré
+};
+
+function applyLang(){
+  document.documentElement.lang = LANG;
+  document.documentElement.style.setProperty("--you", JSON.stringify(t("you")));
+  document.title = t("title");
+  const compact = new Intl.NumberFormat(locale(), {notation:"compact", maximumFractionDigits:1}).format(TOTAL);
+  $("iEyebrow").textContent = t("eyebrow");
+  $("iH1").innerHTML = t("h1");
+  $("iSub").textContent = t("sub", {n: compact});
+  $("addr").placeholder = t("ph");
+  $("go").textContent = t("btn");
+  $("iHint").textContent = t("hint");
+  $("iBadge").textContent = t("badge");
+  $("kBal").textContent = t("kBal");
+  $("kBracket").textContent = t("kBracket");
+  $("kAbove").textContent = t("kAbove");
+  $("iLadder").textContent = t("ladder");
+  $("iLegL").textContent = t("legL");
+  $("iLegR").textContent = t("legR");
+  $("iFoot1").innerHTML = t("foot1", {d: snapDateStr()});
+  $("iFoot2").textContent = t("foot2");
+  document.querySelectorAll("#langs button").forEach(b => b.classList.toggle("on", b.dataset.lang === LANG));
+  // si un résultat est affiché, le retraduire
+  if ($("ticket").classList.contains("show") && lastResult) renderResult(lastResult);
+}
+
+function buildLangBar(){
+  $("langs").innerHTML = Object.entries(LANGS).map(([code, flag]) =>
+    `<button type="button" data-lang="${code}" aria-label="${code}" title="${code.toUpperCase()}">${flag}</button>`).join("");
+  $("langs").addEventListener("click", e => {
+    const b = e.target.closest("button[data-lang]");
+    if (!b) return;
+    LANG = b.dataset.lang;
+    try { localStorage.setItem("lang", LANG); } catch(err){}
+    applyLang();
+  });
+}
+
 buildTicks();
+buildLangBar();
+applyLang();
+let lastResult = null;
+
+
+function renderResult({btc, addr}){
+  const est = estimateRank(btc, addr);
+  const pct = est.rank / TOTAL * 100;
+  const pctStr = (pct < 0.0001 ? 0.0001 : pct).toLocaleString(locale(),
+    pct < 1 ? {maximumSignificantDigits:2} : {maximumFractionDigits:1}) + " %";
+
+  $('tAddr').textContent = addr;
+  $('tRank').textContent = fmtInt(est.rank);
+  $('rankLabel').textContent = est.exact ? t('rankExact') : t('rankEst');
+  $('iPct').innerHTML = t('pct', {p: pctStr});
+  $('tBtc').innerHTML = fmtBtc(btc) + " <small>BTC</small>";
+  $('marker').style.left = positionPct(btc).toFixed(2) + "%";
+
+  if (est.inTop){
+    $('tBracket').textContent = t('topBracket');
+    $('tAbove').innerHTML = fmtInt(est.rank-1) + " <small>" + t('ofTotal',{n:fmtInt(TOTAL)}) + "</small>";
+    $('tFoot').innerHTML = t('footTop', {d: snapDateStr()});
+  } else {
+    const [blo, bhi] = fineBand(btc);
+    $('tBracket').textContent = fmtThr(blo) + " – " + fmtThr(bhi) + " BTC";
+    $('tAbove').innerHTML = fmtInt(Math.max(0, est.rank-1)) + " <small>" + t('ofTotal',{n:fmtInt(TOTAL)}) + "</small>";
+    const pLo = Math.max(est.loRank, Math.round(est.rank*0.92));
+    const pHi = Math.min(est.hiRank, Math.round(est.rank*1.08));
+    $('tFoot').innerHTML = t('footEst', {
+      a: fmtInt(pLo), b: fmtInt(pHi), c: fmtInt(est.loRank), e: fmtInt(est.hiRank),
+      n2: fmtInt(est.c2), b2: fmtThr(est.b2), n1: fmtInt(est.c1), b1: fmtThr(est.b1)
+    });
+  }
+  $('ticket').classList.add('show');
+}
 
 async function check(){
   const addr = $('addr').value.trim();
@@ -348,20 +576,20 @@ async function check(){
   ticket.classList.remove('show');
   msg.className = 'msg';
 
-  if (!addr){ msg.className='msg err'; msg.textContent="Entrez une adresse Bitcoin."; return; }
+  if (!addr){ msg.className='msg err'; msg.textContent=t('errEmpty'); return; }
   if (!looksLikeBtcAddress(addr)){
     msg.className='msg err';
-    msg.textContent="Format d'adresse non reconnu. Formats acceptés : Legacy (1…), SegWit (3…), Bech32 (bc1…).";
+    msg.textContent=t('errFormat');
     return;
   }
 
   btn.disabled = true;
   msg.className='msg load';
-  msg.textContent="Lecture de la blockchain…";
+  msg.textContent=t('loading');
 
   try{
     const aRes = await fetch("https://mempool.space/api/address/" + encodeURIComponent(addr));
-    if (!aRes.ok) throw new Error(aRes.status === 400 ? "Adresse invalide selon le réseau Bitcoin." : "Erreur réseau ("+aRes.status+"). Réessayez dans un instant.");
+    if (!aRes.ok) throw new Error(aRes.status === 400 ? t('errInvalid') : t('errNet',{c:aRes.status}));
     const a = await aRes.json();
 
     const sats = (a.chain_stats.funded_txo_sum - a.chain_stats.spent_txo_sum)
@@ -372,49 +600,17 @@ async function check(){
 
     if (btc <= 0){
       msg.className='msg err';
-      msg.textContent = "Cette adresse a un solde de 0 BTC — elle n'apparaît dans aucune richlist. " +
-        (a.chain_stats.tx_count > 0 ? "Elle a pourtant un historique de " + fmtInt(a.chain_stats.tx_count) + " transaction(s) : les fonds ont été déplacés." : "Aucune transaction enregistrée.");
+      msg.textContent = t('zero') +
+        (a.chain_stats.tx_count > 0 ? t('zeroHist',{n:fmtInt(a.chain_stats.tx_count)}) : t('zeroNo'));
       btn.disabled = false;
       return;
     }
 
-    const est = estimateRank(btc, addr);
-    const pct = est.rank / TOTAL * 100;
-    const pctStr = pct < 0.0001 ? "0,0001 %" :
-                   pct < 1   ? pct.toLocaleString('fr-FR',{maximumSignificantDigits:2}) + " %" :
-                               pct.toLocaleString('fr-FR',{maximumFractionDigits:1}) + " %";
-
-    $('tAddr').textContent = addr;
-    $('tRank').textContent = fmtInt(est.rank);
-    $('rankLabel').textContent = est.exact ? "Position richlist exacte" : "Position richlist estimée";
-    $('tPct').textContent = pctStr;
-    $('tBtc').innerHTML = fmtBtc(btc) + " <small>BTC</small>";
-    $('marker').style.left = positionPct(btc).toFixed(2) + "%";
-
-    if (est.inTop){
-      $('tBracket').textContent = "Top 1 000 mondial";
-      $('tAbove').innerHTML = fmtInt(est.rank-1) + " <small>sur " + fmtInt(TOTAL) + "</small>";
-      $('tFoot').innerHTML =
-        "Cette adresse fait partie du <strong>top 1 000 mondial</strong> : son rang est " +
-        "déterminé par comparaison directe avec le classement exact des 1 000 plus grosses adresses (snapshot du " + SNAPSHOT_DATE + ").";
-    } else {
-      const [blo, bhi] = fineBand(btc);
-      $('tBracket').textContent = fmtThr(blo) + " – " + fmtThr(bhi) + " BTC";
-      $('tAbove').innerHTML = fmtInt(Math.max(0, est.rank-1)) + " <small>sur " + fmtInt(TOTAL) + "</small>";
-      const pLo = Math.max(est.loRank, Math.round(est.rank*0.92));
-      const pHi = Math.min(est.hiRank, Math.round(est.rank*1.08));
-      $('tFoot').innerHTML =
-        "Fourchette probable : <strong>#" + fmtInt(pLo) + " – #" + fmtInt(pHi) + "</strong> " +
-        "(modèle calibré, erreur validée ≈ 2 %). " +
-        "Encadrement <strong>certain</strong> : #" + fmtInt(est.loRank) + " – #" + fmtInt(est.hiRank) +
-        ", car exactement " + fmtInt(est.c2) + " adresses détiennent ≥ " + fmtThr(est.b2) +
-        " BTC et " + fmtInt(est.c1) + " détiennent ≥ " + fmtThr(est.b1) + " BTC.";
-    }
-
-    $('ticket').classList.add('show');
+    lastResult = { btc, addr };
+    renderResult(lastResult);
   }catch(e){
     msg.className='msg err';
-    msg.textContent = e.message || "Impossible de joindre l'API. Vérifiez votre connexion et réessayez.";
+    msg.textContent = e.message || t('errFetch');
   }finally{
     btn.disabled = false;
   }
