@@ -17,9 +17,8 @@ jobs:
 
       - name: Régénérer data.js
         run: python3 update_data.py
-        # si le script échoue (source indisponible, données incohérentes),
-        # le job s'arrête ici : data.js n'est pas modifié, le site garde
-        # les données de la veille.
+        # en cas d'échec (source indisponible, données incohérentes),
+        # rien n'est modifié : le site garde les données de la veille.
 
       - name: Publier si les données ont changé
         run: |
