@@ -114,7 +114,7 @@ def main():
     if len(top) != 100:
         sys.exit("ERREUR : page 1 du classement incomplète (%d lignes)" % len(top))
 
-    # ── 2) Pages 2 à 10 : top 1000 ────────────────────────────────────
+    # ── 2) Pages 2 à 10 : top 1000 exact ──────────────────────────────
     for p in range(2, 11):
         rows = parse_top_rows(fetch(f"-{p}"))
         if len(rows) != 100:
@@ -125,9 +125,11 @@ def main():
     if len(bals) != 1000 or any(bals[i] < bals[i + 1] for i in range(999)):
         sys.exit("ERREUR : top 1000 incohérent")
 
-    # ── 3) Ancres exactes : rangs 5 000 et 10 000 ─────────────────────
+    # ── 3) Ancres exactes intermédiaires : un point exact par page ────
+    #    jusqu'au rang 10 000, pour densifier la zone 1 000–10 000 BTC qui
+    #    était la plus large. Chaque page -p donne le rang exact p*100.
     anchors = []
-    for p in (50, 100):
+    for p in (11, 12, 13, 14, 16, 18, 20, 25, 30, 40, 50, 70, 100):
         rows = parse_top_rows(fetch(f"-{p}"))
         if rows:
             rank, _, bal = max(rows)
@@ -145,7 +147,7 @@ def main():
         points.append((lo if lo > 0 else 1e-8, cum + n))
         cum += n
 
-    # ── 5) Points USD convertis au prix du snapshot ────────────────────
+    # ── 5) Points USD convertis au prix du snapshot ───────────────────
     big = max(dist, key=lambda d: d[3])          # tranche la plus massive
     price = big[4] / big[3]                       # USD / BTC du snapshot
     if not (1_000 < price < 10_000_000):
@@ -166,7 +168,9 @@ def main():
         if not merged or b > merged[-1][0]:
             merged.append((b, c))
     merged = [(b, c) for b, c in merged if c >= 1000]  # au-delà : top 1000 exact
-    merged = [(b, c) for b, c in merged] if merged[0][1] == total else merged
+    if not merged or merged[0][1] != total:
+        # garantir le point de base (total d'adresses au seuil minimal)
+        merged = [(1e-8, total)] + [(b, c) for b, c in merged if c < total]
     if len(merged) < 12:
         sys.exit(f"ERREUR : trop peu de points exacts ({len(merged)})")
 
@@ -188,28 +192,29 @@ def main():
     final = []
     for i, (b, c) in enumerate(merged):
         nb = merged[i + 1][0] if i + 1 < len(merged) else b * 10
-        final.append([b, c, alpha_for(b, nb)])
+        final.append([round(b, 8), c, alpha_for(b, nb)])
 
-    # ── 9) Écriture de data.js ─────────────────────────────────────────
+    # ── 9) Écriture de data.js ────────────────────────────────────────
     today = date.today()
     snap_iso = today.isoformat()
     snap = f"{today.day} {MOIS[today.month - 1]} {today.year}"
     bal_js = "[" + ",".join(f"{b:.2f}".rstrip("0").rstrip(".") for b in bals) + "]"
     pts_js = json.dumps(final, separators=(",", ":"))
 
-    out = f"""/* Données générées automatiquement — ne pas modifier à la main.
+    out = f'''/* Données générées automatiquement — ne pas modifier à la main.
    Régénéré chaque nuit par update_data.py via GitHub Actions. */
 const SNAPSHOT_ISO = "{snap_iso}";
 const SNAPSHOT_DATE = "{snap}";
 const TOTAL = {total};
-const POINTS = {pts_js}; // [seuil, nb exact ≥ seuil, alpha Pareto calibré sur la masse BTC de la tranche (null = interpolation log-log)]
-const TOPBAL = {bal_js}; // soldes exacts du top 1000, ordre décroissant
+const POINTS = {pts_js}; // [seuil, nb exact >= seuil, alpha Pareto (null = interpolation log-log)]
+const TOPBAL = {bal_js}; // soldes exacts du top 1000, ordre decroissant
 const TOP_FLOOR = TOPBAL[TOPBAL.length-1];
-"""
+'''
     with open("data.js", "w", encoding="utf-8") as f:
         f.write(out)
-    print(f"OK — {len(final)} points exacts, top 1000 (plancher {bals[-1]:,.0f} BTC), "
-          f"total {total:,} adresses, prix snapshot {price:,.0f} $, date {snap}")
+    print(f"OK — {len(final)} points exacts (dont {len(anchors)} ancres top-10000), "
+          f"top 1000 (plancher {bals[-1]:,.0f} BTC), total {total:,} adresses, "
+          f"prix snapshot {price:,.0f} $, date {snap}")
 
 
 if __name__ == "__main__":
