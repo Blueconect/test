@@ -313,15 +313,24 @@ function fineBand(btc){
    sinon interpolation log-log entre points exacts.
    Retourne aussi l'encadrement certain [loRank, hiRank]. */
 function estimateRank(btc, addr){
-  // 1) zone du top 1000 → rang exact par comparaison de solde
-  if (btc >= TOP_FLOOR){
-    let lo = 0, hi = TOPBAL.length; // 1er indice dont le solde <= btc
-    while (lo < hi){ const m = (lo+hi)>>1; if (TOPBAL[m] > btc) lo = m+1; else hi = m; }
-    const rank = lo + 1;
-    return { rank, exact: true, inTop: true, loRank: rank, hiRank: rank };
+  // 1) zone du top 1000 → rang exact par comparaison de solde.
+  //    Tolérance de 0,05 % : les soldes de la liste sont arrondis (ex. 248 598
+  //    vs 248 597,59 réel), sinon le n°1 réel ressortirait n°2. Les ex-aequo
+  //    de solde (plusieurs adresses identiques) partagent le meilleur rang.
+  if (btc >= TOP_FLOOR * 0.9995){
+    const tol = Math.max(btc * 0.0005, 0.01);
+    let above = 0, equal = 0;
+    for (const b of TOPBAL){
+      if (b > btc + tol) above++;
+      else if (b >= btc - tol) equal++;
+    }
+    const rank = above + 1;                       // rang partagé en cas d'ex-aequo
+    const hiRank = above + Math.max(equal, 1);    // dernière position du groupe
+    return { rank, exact: true, inTop: true, loRank: rank, hiRank, tie: equal > 1 };
   }
 
-  // 2) interpolation log-log entre points exacts
+  // 2) interpolation sur la grille complète (points exacts + points
+  //    historiques corrigés de la dérive, drapeau 1)
   if (btc <= 0) return null;
   let i = 0;
   while (i < POINTS.length-1 && POINTS[i+1][0] <= btc) i++;
@@ -336,8 +345,14 @@ function estimateRank(btc, addr){
     const t = (Math.log(btc)-Math.log(b1)) / (Math.log(b2)-Math.log(b1));
     r = Math.exp(Math.log(c1) + t*(Math.log(c2)-Math.log(c1)));
   }
+  // l'encadrement CERTAIN ne s'appuie que sur les comptages exacts du jour
+  const EX = POINTS; // tous les points sont exacts
+  let j = 0;
+  while (j < EX.length-1 && EX[j+1][0] <= btc) j++;
+  const [eb1,ec1] = EX[j];
+  const [eb2,ec2] = EX[Math.min(j+1, EX.length-1)];
   return { rank: Math.max(1, Math.round(r)), exact: false, inTop: false,
-           b1, b2, c1, c2, loRank: c2+1, hiRank: c1 };
+           eb1, eb2, ec1, ec2, loRank: ec2+1, hiRank: ec1 };
 }
 
 function looksLikeBtcAddress(a){
@@ -621,7 +636,7 @@ function renderResult({btc, addr}){
     const pHi = Math.min(est.hiRank, Math.round(est.rank*1.08));
     $('tFoot').innerHTML = t('footEst', {
       a: fmtInt(pLo), b: fmtInt(pHi), c: fmtInt(est.loRank), e: fmtInt(est.hiRank),
-      n2: fmtInt(est.c2), b2: fmtThr(est.b2), n1: fmtInt(est.c1), b1: fmtThr(est.b1)
+      n2: fmtInt(est.ec2), b2: fmtThr(est.eb2), n1: fmtInt(est.ec1), b1: fmtThr(est.eb1)
     });
   }
 
@@ -646,12 +661,24 @@ async function check(){
   msg.textContent=t('loading');
 
   try{
-    const aRes = await fetch("https://mempool.space/api/address/" + encodeURIComponent(addr));
-    if (!aRes.ok) throw new Error(aRes.status === 400 ? t('errInvalid') : t('errNet',{c:aRes.status}));
-    const a = await aRes.json();
-
-    const sats = (a.chain_stats.funded_txo_sum - a.chain_stats.spent_txo_sum)
-               + (a.mempool_stats.funded_txo_sum - a.mempool_stats.spent_txo_sum);
+    let sats, txCount;
+    try {
+      const aRes = await fetch("https://mempool.space/api/address/" + encodeURIComponent(addr));
+      if (aRes.status === 400) throw new Error(t('errInvalid'));
+      if (!aRes.ok) throw new Error("http " + aRes.status);
+      const a = await aRes.json();
+      sats = (a.chain_stats.funded_txo_sum - a.chain_stats.spent_txo_sum)
+           + (a.mempool_stats.funded_txo_sum - a.mempool_stats.spent_txo_sum);
+      txCount = a.chain_stats.tx_count;
+    } catch (e1) {
+      if (e1.message === t('errInvalid')) throw e1;
+      // repli automatique sur blockchain.info si mempool.space est indisponible
+      const bRes = await fetch("https://blockchain.info/rawaddr/" + encodeURIComponent(addr) + "?limit=0&cors=true");
+      if (!bRes.ok) throw new Error(bRes.status === 400 ? t('errInvalid') : t('errNet',{c:bRes.status}));
+      const b = await bRes.json();
+      sats = b.final_balance;
+      txCount = b.n_tx;
+    }
     const btc = sats / 1e8;
 
     msg.className='msg';
@@ -659,7 +686,7 @@ async function check(){
     if (btc <= 0){
       msg.className='msg err';
       msg.textContent = t('zero') +
-        (a.chain_stats.tx_count > 0 ? t('zeroHist',{n:fmtInt(a.chain_stats.tx_count)}) : t('zeroNo'));
+        (txCount > 0 ? t('zeroHist',{n:fmtInt(txCount)}) : t('zeroNo'));
       btn.disabled = false;
       return;
     }
